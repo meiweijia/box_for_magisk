@@ -219,10 +219,10 @@ upgeox() {
   [ -z "${geodata_mode}" ] && geodata_mode=false
   case "${bin_name}" in
     clash)
-      geoip_file="${box_dir}/clash/$(if [[ "${xclash_option}" == "premium" || "${geodata_mode}" == "false" ]]; then echo "Country.mmdb"; else echo "GeoIP.dat"; fi)"
-      geoip_url="https://github.com/$(if [[ "${xclash_option}" == "premium" || "${geodata_mode}" == "false" ]]; then echo "MetaCubeX/meta-rules-dat/raw/release/country-lite.mmdb"; else echo "MetaCubeX/meta-rules-dat/raw/release/geoip-lite.dat"; fi)"
+      geoip_file="${box_dir}/clash/GeoIP.dat"
+      geoip_url="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
       geosite_file="${box_dir}/clash/GeoSite.dat"
-      geosite_url="https://github.com/MetaCubeX/meta-rules-dat/raw/release/geosite.dat"
+      geosite_url="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"
       ;;
     sing-box)
       geoip_file="${box_dir}/sing-box/geoip.db"
