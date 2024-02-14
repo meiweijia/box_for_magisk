@@ -1,7 +1,6 @@
 #!/system/bin/sh
 
-scripts=$(realpath "$0")
-scripts_dir=$(dirname "${scripts}")
+scripts_dir="${0%/*}"
 source /data/adb/box/settings.ini
 
 PROPFILE="/data/adb/modules/box_for_root/module.prop"
@@ -156,10 +155,11 @@ prepare_singbox() {
   fi
 
   # delete Toggle comment, because yq doesn't work, Execute the sed command to uncomment the "/* ... */", "//" line
-  # sed -i '/\/\*/,/\*\//d; /^[[:space:]]*\/\//d; /^( *\/\/|\/\*.*\*\/)$/d'
+  # sed -i '/\/\*/,/\*\//d; /^[[:space:]]*\/\//d; /^( *\/\/|\/\*.*\*\/)$/d' "${box_dir}/sing-box/"*.json
 
   # format sing-box configuration
   if ${bin_path} format -w -D "${box_dir}/${bin_name}" -C "${box_dir}/${bin_name}" > "${box_run}/${bin_name}.log" 2>&1; then
+  # if sed -i '/\/\*/,/\*\//d; /^[[:space:]]*\/\//d; /^( *\/\/|\/\*.*\*\/)$/d' "${box_dir}/sing-box/"*.json 2>&1; then
     if [[ "${network_mode}" == "mixed" || "${proxy_mode}" == "tun" ]]; then
       if grep -q '"type": "tproxy"' "${sing_config}"; then
         "${yq_command}" 'del(.inbounds[] | select(.type == "tproxy"))' -i --output-format=json "${sing_config}"
@@ -455,7 +455,7 @@ box_bin_status() {
 
   stack=$(if [ "${bin_name}" != "clash" ]; then find "/data/adb/box/sing-box" -type f -name "*.json" -exec busybox awk -F'"' '/"stack"/{print $4}' {} +; else busybox awk '!/^ *#/ && /stack: / { print $2;found=1; exit}' "${clash_config}"; fi)
 
-  log Info "${bin_name} service is running."
+  TOAST=1 log Info "${bin_name} service is running."
   log Info "proxy: ${proxy_mode} | $(if [ "${proxy_mode}" != "tun" ]; then echo network: ${network_mode}; fi) | $(if [[ "${proxy_mode}" == "tun" || ${network_mode} == "mixed" ]]; then echo stack: ${stack}; fi)"
 
   # Get the memory usage of the binary
@@ -520,14 +520,6 @@ start_box() {
   echo -n "" > "${box_log}"
   box_version=$(busybox awk '!/^ *#/ && /version=/ { print $0 }' "/data/adb/modules/box_for_root/module.prop" 2>/dev/null)
 
-  # busybox check
-  busybox_code=$(busybox | head -n 1 | busybox awk '{print $2}' | sed -e 's/^v//' -e 's/-osm0sis$//' -e 's/-Magisk$//')
-  if [ "$(echo "${busybox_code}" | busybox awk -F. '{printf "%03d%03d%03d\n", $1, $2, $3}')" -lt "$(echo "1.36.1" | busybox awk -F. '{printf "%03d%03d%03d\n", $1, $2, $3}')" ]; then
-    log Info "Current busybox v${busybox_code}"
-    log Error "Please update your busybox to version 1.36.1+ latest"
-    exit 1
-  fi
-
   if [ -t 1 ]; then
     echo -e "${yellow}$(getprop persist.sys.timezone)${normal}"
     echo -e "${yellow}$(getprop gsm.sim.operator.alpha) / $(getprop gsm.network.type)${normal}"
@@ -580,8 +572,14 @@ start_box() {
       ;;
   esac
 
-  # show the current version of busybox
-  log Info "Current busybox v${busybox_code}"
+  # busybox check
+  busybox_code=$(busybox | head -n 1 | busybox awk '{print $2}' | busybox grep -oE '[0-9.]*')
+  if [ "$(echo "${busybox_code}" | busybox awk -F. '{printf "%03d%03d%03d\n", $1, $2, $3}')" -lt "$(echo "1.36.1" | busybox awk -F. '{printf "%03d%03d%03d\n", $1, $2, $3}')" ]; then
+    log Info "Current $(which busybox) v${busybox_code}"
+    log Warning "Please update your busybox to v1.36.1+"
+  else
+    log Info "Current $(which busybox) v${busybox_code}"
+  fi
 
   # Check permissions, check for bin existence, delete old logs, create a TUN if necessary, run box, and wait for 1 second
   box_permission
@@ -635,7 +633,7 @@ stop_box() {
       rm -f "${box_pid}"
     fi
     log Warning "${bin_name} shutting down, service is stopped."
-    log Warning "${bin_name} disconnected."
+    TOAST=1 log Warning "${bin_name} disconnected."
     [ -t 1 ] && echo -e "${white}--------------------------------------------${normal}"
   else
     log Warning "${bin_name} Not stopped; may still be shutting down or failed to shut down."
